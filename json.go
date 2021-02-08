@@ -4,30 +4,17 @@ import (
 	"encoding/json"
 	"reflect"
 	"strings"
-	"unsafe"
 
 	"dstruct/jsoniter"
 )
 
-//go:linkname mapassign reflect.mapassign
-//go:noescape
-func mapassign(rtype unsafe.Pointer, m unsafe.Pointer, key, val unsafe.Pointer)
-
 func (d *DStruct) UnmarshalJSON(data []byte) error {
 
-	cfg := jsoniter.Config{
-		EscapeHTML: true,
-	}.Froze()
-
-	iter := cfg.BorrowIterator(data)
-	defer cfg.ReturnIterator(iter)
+	iter := jsoniter.BorrowIterator(data)
+	defer jsoniter.ReturnIterator(iter)
 	d.jsonDecode(iter)
 	return iter.Error
 
-}
-
-func (d *DStruct) init() {
-	d.kv = make(map[string]interface{}, 0)
 }
 
 func (d *DStruct) jsonDecode(iter *jsoniter.Iterator) {
@@ -95,7 +82,7 @@ func (d *DStruct) jsonDecode(iter *jsoniter.Iterator) {
 
 type decoder func(val reflect.Value, iter *jsoniter.Iterator)
 
-var marshalerType = reflect.TypeOf((*json.Marshaler)(nil)).Elem()
+var ummarshalerType = reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
 
 type jsonDecode struct {
 }
@@ -107,40 +94,60 @@ var (
 func (jd *jsonDecode) Decode(typ reflect.Type) decoder {
 
 	// custom json.Unmarshal
-	if typ.Implements(marshalerType) {
+	if typ.Implements(ummarshalerType) {
 		return defaultDecode.Unmarshal
 	}
 
-	decodeMap := map[string]decoder{
-		"string": jd.String,
-		//     "invalid",
-		"bool":   jd.Bool,
-		"int":    jd.Int,
-		"int8":   jd.Int8,
-		"int16":  jd.Int16,
-		"int32":  jd.Int32,
-		"int64":  jd.Int64,
-		"uint":   jd.Uint,
-		"uint8":  jd.Uint8,
-		"uint16": jd.Uint16,
-		"uint32": jd.Uint32,
-		"uint64": jd.Uint64,
-		//"uintptr",
-		"float32": jd.Float32,
-		"float64": jd.Float64,
-		//"complex64",
-		//"complex128",
-		"array": jd.Array,
-		//"chan",
-		//"func",
-		"map": jd.Map,
-		//"ptr",
-		"slice":  jd.Array,
-		"struct": jd.Struct,
-		//"unsafe.Pointer",
+	switch typ.Kind().String() {
+
+	case "string":
+		return jd.String
+	//     "invalid"
+	case "bool":
+		return jd.Bool
+	case "int":
+		return jd.Int
+	case "int8":
+		return jd.Int8
+	case "int16":
+		return jd.Int16
+	case "int32":
+		return jd.Int32
+	case "int64":
+		return jd.Int64
+	case "uint":
+		return jd.Uint
+	case "uint8":
+		return jd.Uint8
+	case "uint16":
+		return jd.Uint16
+	case "uint32":
+		return jd.Uint32
+	case "uint64":
+		return jd.Uint64
+	//"uintptr"
+	case "float32":
+		return jd.Float32
+	case "float64":
+		return jd.Float64
+	//"complex64"
+	//"complex128"
+	case "array":
+		return jd.Array
+	//"chan"
+	//"func"
+	case "map":
+		return jd.Map
+	case "ptr":
+		return jd.Pointer
+	case "slice":
+		return jd.Array
+	case "struct":
+		return jd.Struct
+		//"unsafe.Pointer"
 	}
 
-	return decodeMap[typ.Kind().String()]
+	return nil
 }
 
 func (jd *jsonDecode) String(val reflect.Value, iter *jsoniter.Iterator) {
@@ -272,13 +279,14 @@ func (jd *jsonDecode) Map(val reflect.Value, iter *jsoniter.Iterator) {
 	valTyp := val.Type().Elem()
 	keyTyp := val.Type().Key()
 
-	val.Set(reflect.MakeMap(val.Type()))
-
-	if !iter.IncrementDepth() {
+	if jd.readStartObject(iter) {
 		return
 	}
-	defer iter.DecrementDepth()
-	keyDecode := jd.Decode(keyTyp)
+
+	val.Set(reflect.MakeMap(val.Type()))
+
+	keyDecode := jd.DecodeMapKey(keyTyp)
+	// 非字符串的时候，会解析失败
 	if keyDecode == nil {
 		iter.ReportError("decode map elem", "not support key type "+keyTyp.Kind().String())
 		return
@@ -290,39 +298,10 @@ func (jd *jsonDecode) Map(val reflect.Value, iter *jsoniter.Iterator) {
 		return
 	}
 
-	c := iter.NextToken()
-	if c == 'n' {
-		iter.SkipThreeBytes('u', 'l', 'l')
-		return
-	}
-
-	if c != '{' {
-		iter.ReportError("ReadMapCB", `expect { or n, but found `+string([]byte{c}))
-		return
-	}
-	c = iter.NextToken()
-	if c == '}' {
-		return
-	}
 	iter.UnreadByte()
 
-	elemKey := reflect.New(keyTyp).Elem()
-	keyDecode(elemKey, iter)
-	if iter.Error != nil {
-		return
-	}
-	c = iter.NextToken()
-	if c != ':' {
-		iter.ReportError("ReadMapCB", "expect : after object field, but found "+string([]byte{c}))
-		return
-	}
-	elemVal := reflect.New(valTyp).Elem()
-	valDecode(elemVal, iter)
-	if iter.Error != nil {
-		return
-	}
-	val.SetMapIndex(elemKey, elemVal)
-	for c = iter.NextToken(); c == ','; c = iter.NextToken() {
+	var c byte
+	for c = ','; c == ','; c = iter.NextToken() {
 		elemKey := reflect.New(keyTyp).Elem()
 		keyDecode(elemKey, iter)
 		if iter.Error != nil {
@@ -346,6 +325,21 @@ func (jd *jsonDecode) Map(val reflect.Value, iter *jsoniter.Iterator) {
 
 }
 
+func (jd *jsonDecode) Pointer(val reflect.Value, iter *jsoniter.Iterator) {
+
+	var elemVal reflect.Value
+	if val.IsNil() {
+		elemVal = reflect.New(val.Type().Elem()).Elem()
+	} else {
+		elemVal = val.Elem()
+	}
+
+	decode := jd.Decode(elemVal.Type())
+	decode(elemVal, iter)
+	val.Set(elemVal.Addr())
+
+}
+
 type structField struct {
 	field   string
 	name    string
@@ -354,6 +348,7 @@ type structField struct {
 	typ     reflect.Type
 }
 
+// TODO:  未做最大深度校验
 func describeStruct(structType reflect.Type) map[string]structField {
 	fieldTypeMap := make(map[string]structField, 0)
 	for i := 0; i < structType.NumField(); i++ {
@@ -398,24 +393,14 @@ func describeStruct(structType reflect.Type) map[string]structField {
 
 func (jd *jsonDecode) Struct(val reflect.Value, iter *jsoniter.Iterator) {
 
-	c := iter.NextToken()
-	if c == 'n' {
-		iter.SkipThreeBytes('u', 'l', 'l')
-		return
-	}
-
-	if c != '{' {
-		iter.ReportError("ReadMapCB", `expect { or n, but found `+string([]byte{c}))
-		return
-	}
-	c = iter.NextToken()
-	if c == '}' {
+	if jd.readStartObject(iter) {
 		return
 	}
 
 	fieldTypeMap := describeStruct(val.Type())
 
 	iter.UnreadByte()
+	var c byte
 	for c = ','; c == ','; c = iter.NextToken() {
 		key := iter.ReadString()
 		if iter.Error != nil {
@@ -454,11 +439,88 @@ func (jd *jsonDecode) Struct(val reflect.Value, iter *jsoniter.Iterator) {
 }
 
 func (jd *jsonDecode) Interface(val interface{}, iter *jsoniter.Iterator) {
-	iter.ReadVal(val)
+	jsonVal := iter.Read()
+	valOf := reflect.ValueOf(val).Elem()
+	valOf.Set(reflect.ValueOf(jsonVal))
 }
 
+// TODO: optimziation. not use **ptr
 func (jd *jsonDecode) Unmarshal(val reflect.Value, iter *jsoniter.Iterator) {
 
-	iter.ReadObject()
+	elemVal := reflect.New(val.Type().Elem())
 
+	unmarshaler := elemVal.Interface().(json.Unmarshaler)
+	iter.NextToken()
+	iter.UnreadByte() // skip spaces
+	bytes := iter.SkipAndReturnBytes()
+	if iter.Error != nil {
+		return
+	}
+
+	err := unmarshaler.UnmarshalJSON(bytes)
+	if err != nil {
+		iter.ReportError("unmarshalerDecoder", err.Error())
+	}
+
+	val.Set(elemVal)
+}
+
+// only map key
+func (jd *jsonDecode) DecodeMapKey(typ reflect.Type) decoder {
+
+	decode := jd.Decode(typ)
+	switch typ.Kind() {
+	case reflect.Bool,
+		reflect.Uint8, reflect.Int8,
+		reflect.Uint16, reflect.Int16,
+		reflect.Uint32, reflect.Int32,
+		reflect.Uint64, reflect.Int64,
+		reflect.Uint, reflect.Int,
+		reflect.Float32, reflect.Float64,
+		reflect.Uintptr:
+		f := func(val reflect.Value, iter *jsoniter.Iterator) {
+			c := iter.NextToken()
+			if c != '"' {
+				iter.ReportError("ReadMapCB", `expect ", but found `+string([]byte{c}))
+				return
+			}
+			decode(val, iter)
+			c = iter.NextToken()
+			if c != '"' {
+				iter.ReportError("ReadMapCB", `expect ", but found `+string([]byte{c}))
+				return
+			}
+		}
+		return f
+
+	}
+
+	return decode
+
+}
+
+// 处理byte stream中关于object对象， 校验是否合法object， over 表示是否需要后需处理
+func (jd *jsonDecode) readStartObject(iter *jsoniter.Iterator) (over bool) {
+
+	if !iter.IncrementDepth() {
+		return true
+	}
+	defer iter.DecrementDepth()
+
+	c := iter.NextToken()
+	if c == 'n' {
+		iter.SkipThreeBytes('u', 'l', 'l')
+		return true
+	}
+
+	if c != '{' {
+		iter.ReportError("ReadMapCB", `expect { or n, but found `+string([]byte{c}))
+		return true
+	}
+	c = iter.NextToken()
+	if c == '}' {
+		return true
+	}
+
+	return false
 }

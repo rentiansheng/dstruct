@@ -18,4 +18,37 @@ bson Unmarshal 暂未启动
 
 使用  github.com/json-iterator/go 来 Iterator实现数据读取和接卸，后需计划使用unsafe.Pointer ， 减少reflect性能损耗
 
+eg:
+
+```
+    
+	testStrJSONBytes := `{"int":1,"str":"str","bl":true, "arr_str":["1","2"],"arr_int":[1,2], "map":{"a":1,"b":64}, ` +
+		`"test_struct":{"str":"string", "int":1},"interface":{"str":"string", "bl":true}}`
+        // define a dynamic structure 
+	ds := &DStruct{}
+	var i interface{}
+        // define the fields of the dynamic structure
+	ds.SetFields(map[string]reflect.Type{
+		"int":         TypeInt,
+		"str":         TypeString,
+		"bl":          TypeBool,
+		"arr_str":     TypeArrayStr,
+		"arr_int":     TypeArrayInt,
+		"map":         reflect.TypeOf(map[string]int64{}),
+		"test_struct": reflect.TypeOf(testStruct{}),
+		"interface":   reflect.TypeOf(i),
+	})
+        // Unmarshal dynamic structure, you can directly use golang official
+	err := json.Unmarshal([]byte(testStrJSONBytes), ds)
+	if err != nil {
+        t.Error(err.Error())
+		return
+	}
+    ds.Int64("int")
+    ds.String("str")
+    ds.Value("interface", &i)
+
+```
+
+
 

@@ -2,7 +2,6 @@ package jsoniter
 
 import (
 	"fmt"
-	"strings"
 )
 
 // ReadObject read one field from object.
@@ -43,68 +42,6 @@ func (iter *Iterator) ReadObject() (ret string) {
 		iter.ReportError("ReadObject", fmt.Sprintf(`expect { or , or } or n, but found %s`, string([]byte{c})))
 		return
 	}
-}
-
-// CaseInsensitive
-func (iter *Iterator) readFieldHash() int64 {
-	hash := int64(0x811c9dc5)
-	c := iter.nextToken()
-	if c != '"' {
-		iter.ReportError("readFieldHash", `expect ", but found `+string([]byte{c}))
-		return 0
-	}
-	for {
-		for i := iter.head; i < iter.tail; i++ {
-			// require ascii string and no escape
-			b := iter.buf[i]
-			if b == '\\' {
-				iter.head = i
-				for _, b := range iter.readStringSlowPath() {
-					if 'A' <= b && b <= 'Z' && !iter.cfg.caseSensitive {
-						b += 'a' - 'A'
-					}
-					hash ^= int64(b)
-					hash *= 0x1000193
-				}
-				c = iter.nextToken()
-				if c != ':' {
-					iter.ReportError("readFieldHash", `expect :, but found `+string([]byte{c}))
-					return 0
-				}
-				return hash
-			}
-			if b == '"' {
-				iter.head = i + 1
-				c = iter.nextToken()
-				if c != ':' {
-					iter.ReportError("readFieldHash", `expect :, but found `+string([]byte{c}))
-					return 0
-				}
-				return hash
-			}
-			if 'A' <= b && b <= 'Z' && !iter.cfg.caseSensitive {
-				b += 'a' - 'A'
-			}
-			hash ^= int64(b)
-			hash *= 0x1000193
-		}
-		if !iter.loadMore() {
-			iter.ReportError("readFieldHash", `incomplete field name`)
-			return 0
-		}
-	}
-}
-
-func calcHash(str string, caseSensitive bool) int64 {
-	if !caseSensitive {
-		str = strings.ToLower(str)
-	}
-	hash := int64(0x811c9dc5)
-	for _, b := range []byte(str) {
-		hash ^= int64(b)
-		hash *= 0x1000193
-	}
-	return int64(hash)
 }
 
 // ReadObjectCB read object with callback, the key is ascii only and field name not copied

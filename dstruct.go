@@ -9,6 +9,7 @@ import (
 var (
 	ErrType     error = errors.New("type mismatch")
 	ErrNotFound error = errors.New("not found field")
+	ErrNotSet         = errors.New("eflect.Value.Addr of unaddressable value")
 )
 
 type DMode int64
@@ -20,6 +21,38 @@ const (
 	broadMode
 )
 
+var (
+	TypeString  = reflect.TypeOf("")
+	TypeInvalid = reflect.TypeOf(nil)
+	TypeBool    = reflect.TypeOf(bool(true))
+	TypeInt     = reflect.TypeOf(int(0))
+	TypeInt8    = reflect.TypeOf(int8(0))
+	TypeInt16   = reflect.TypeOf(int16(0))
+	TypeInt32   = reflect.TypeOf(int32(0))
+	TypeInt64   = reflect.TypeOf(int64(0))
+	TypeUint    = reflect.TypeOf(uint(0))
+	TypeUint8   = reflect.TypeOf(uint8(0))
+	TypeUint16  = reflect.TypeOf(uint16(0))
+	TypeUint32  = reflect.TypeOf(uint32(0))
+	TypeUint64  = reflect.TypeOf(uint64(0))
+	//uintptr
+	TypeFloat32 = reflect.TypeOf(float32(0))
+	TypeFloat64 = reflect.TypeOf(float32(0))
+	//complex64,
+	//complex128,
+	TypeArrayInt64 = reflect.TypeOf([]int64{})
+	TypeArrayInt   = reflect.TypeOf([]int{})
+	TypeArrayStr   = reflect.TypeOf([]string{})
+
+	//chan,
+	//func,
+	TypeMapStr = reflect.TypeOf(map[string]string{})
+	//TypePtr    = reflect.Type()
+	//TypeSlice  = reflect.Type()
+	//TypeStruct = reflect.Type()
+	//unsafe.Pointer
+)
+
 type DStruct struct {
 	mode DMode
 
@@ -28,13 +61,31 @@ type DStruct struct {
 	kv map[string]interface{}
 }
 
+func (d *DStruct) init() {
+	d.kv = make(map[string]interface{}, 0)
+	for field, typ := range d.fields {
+		if typ == nil {
+			d.kv[field] = nil
+		} else {
+			d.kv[field] = reflect.New(typ).Elem().Interface()
+		}
+	}
+}
+
 func (d *DStruct) SetFields(fields map[string]reflect.Type) {
 	if d.fields == nil {
 		d.fields = make(map[string]reflect.Type)
 	}
-	for key, val := range fields {
-		d.fields[key] = val
+	for key, typ := range fields {
+		d.fields[key] = typ
 	}
+}
+
+func (d *DStruct) SetOneFields(field string, typ reflect.Type) {
+	if d.fields == nil {
+		d.fields = make(map[string]reflect.Type)
+	}
+	d.fields[field] = typ
 }
 
 func (d *DStruct) ResetFields(fields map[string]reflect.Type) {
@@ -45,41 +96,65 @@ func (d *DStruct) ResetFields(fields map[string]reflect.Type) {
 	}
 }
 
-/*
 func (d DStruct) FieldType(name string) reflect.Type {
-	if DType, ok := d.fields[name]; ok {
-		return DType
+	if typ, ok := d.fields[name]; ok {
+		return typ
 	}
-	return reflect.Invalid
+	return nil
 }
 
 func (d DStruct) Int64(name string) (int64, error) {
-	if err := d.checkType(name, reflect.Int64); err != nil {
+	if err := d.checkType(name, TypeInt64); err != nil {
 		return 0, err
 	}
 
-	return d.int64Vals[name], nil
+	return d.kv[name].(int64), nil
 
 }
 
 func (d DStruct) Str(name string) (string, error) {
-	if err := d.checkType(name, reflect.String); err != nil {
+	if err := d.checkType(name, TypeString); err != nil {
 		return "", err
 	}
 
-	return d.strVals[name], nil
+	return d.kv[name].(string), nil
 }
 
 func (d DStruct) Bool(name string) (bool, error) {
-	if err := d.checkType(name, reflect.Bool); err != nil {
+	if err := d.checkType(name, TypeBool); err != nil {
 		return false, err
 	}
 
-	return d.boolVals[name], nil
+	return d.kv[name].(bool), nil
+}
+
+func (d *DStruct) Value(name string, val interface{}) (bool, error) {
+	iVal, ok := d.kv[name]
+	if !ok {
+		return false, nil
+	}
+	valueOf := reflect.ValueOf(val)
+	iValueOf := reflect.ValueOf(iVal)
+	if valOf, ok := iVal.(reflect.Value); ok {
+		iValueOf = valOf
+	}
+
+	if !valueOf.Elem().CanSet() || valueOf.Kind() != reflect.Ptr {
+		return false, ErrNotSet
+	}
+
+	if err := d.checkType(name, valueOf.Elem().Type()); err != nil {
+		return false, err
+	}
+
+	if valueOf.Elem().Type() == iValueOf.Type() {
+		valueOf.Elem().Set(iValueOf)
+	}
+	return true, nil
 }
 
 // 检查字段类型
-func (d DStruct) checkType(name string, DType reflect.Type) error {
+func (d DStruct) checkType(name string, typ reflect.Type) error {
 
 	if d.mode == broadMode {
 		return nil
@@ -90,23 +165,18 @@ func (d DStruct) checkType(name string, DType reflect.Type) error {
 		return ErrNotFound
 	}
 	// 类型不匹配
-	if DType != realType {
+	if typ != realType {
 		return ErrType
 	}
 
 	return nil
 }
 
-func (d DStruct) Types() map[string]int64 {
-	fields := make(map[string]int64, len(d.fields))
-	for key, t := range d.fields {
-		fields[key] = int64(t)
-	}
-	return fields
-}
-*/
 func (d DStruct) String() string {
 
-	str, _ := json.Marshal(d.kv)
+	str, err := json.Marshal(d.kv)
+	if err != nil {
+		return err.Error()
+	}
 	return string(str)
 }

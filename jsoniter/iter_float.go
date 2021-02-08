@@ -9,6 +9,12 @@ import (
 	"unsafe"
 )
 
+var pow10 []uint64
+
+func init() {
+	pow10 = []uint64{1, 10, 100, 1000, 10000, 100000, 1000000}
+}
+
 var floatDigits []int8
 
 const invalidCharForNumber = int8(-1)
