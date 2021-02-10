@@ -1,6 +1,7 @@
 package jsoniter
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 )
@@ -77,6 +78,7 @@ type Iterator struct {
 	captured         []byte
 	Error            error
 	Attachment       interface{} // open for customized decoder
+	useJSONNumber    bool
 }
 
 // NewIterator creates an empty Iterator instance
@@ -292,6 +294,9 @@ func (iter *Iterator) Read() interface{} {
 	case StringValue:
 		return iter.ReadString()
 	case NumberValue:
+		if iter.useJSONNumber {
+			return json.Number(iter.readNumberAsString())
+		}
 		return iter.ReadFloat64()
 	case NilValue:
 		iter.skipFourBytes('n', 'u', 'l', 'l')

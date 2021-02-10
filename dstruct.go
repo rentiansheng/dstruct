@@ -57,8 +57,10 @@ type DStruct struct {
 	mode DMode
 
 	fields map[string]reflect.Type
-	/**** 为了减少转换这里单独存储不同类型数据 ****/
-	kv map[string]interface{}
+	kv     map[string]interface{}
+
+	// json Unmarshal 特有字段，数组类型是否使用jsonNumber
+	jsonNumber bool
 }
 
 func (d *DStruct) init() {
@@ -135,6 +137,8 @@ func (d *DStruct) Value(name string, val interface{}) (bool, error) {
 	}
 	valueOf := reflect.ValueOf(val)
 	iValueOf := reflect.ValueOf(iVal)
+
+	// 处理多次reflect.Set引起类型错误的问题
 	if valOf, ok := iVal.(reflect.Value); ok {
 		iValueOf = valOf
 	}
@@ -147,7 +151,7 @@ func (d *DStruct) Value(name string, val interface{}) (bool, error) {
 		return false, err
 	}
 
-	if valueOf.Elem().Type() == iValueOf.Type() {
+	if valueOf.Elem().Type().Kind() == reflect.Interface || valueOf.Elem().Type() == iValueOf.Type() {
 		valueOf.Elem().Set(iValueOf)
 	}
 	return true, nil
@@ -164,6 +168,11 @@ func (d DStruct) checkType(name string, typ reflect.Type) error {
 	if !ok {
 		return ErrNotFound
 	}
+
+	if typ.Kind() == reflect.Interface {
+		return nil
+	}
+
 	// 类型不匹配
 	if typ != realType {
 		return ErrType

@@ -10,11 +10,15 @@ import (
 
 func (d *DStruct) UnmarshalJSON(data []byte) error {
 
-	iter := jsoniter.BorrowIterator(data)
+	iter := jsoniter.BorrowIterator(data, d.jsonNumber)
 	defer jsoniter.ReturnIterator(iter)
 	d.jsonDecode(iter)
 	return iter.Error
 
+}
+
+func (d *DStruct) JSONNumber() {
+	d.jsonNumber = true
 }
 
 func (d *DStruct) jsonDecode(iter *jsoniter.Iterator) {
@@ -348,7 +352,6 @@ type structField struct {
 	typ     reflect.Type
 }
 
-// TODO:  未做最大深度校验
 func describeStruct(structType reflect.Type) map[string]structField {
 	fieldTypeMap := make(map[string]structField, 0)
 	for i := 0; i < structType.NumField(); i++ {

@@ -16,8 +16,9 @@ var iteratorPool = sync.Pool{
 	},
 }
 
-func BorrowIterator(data []byte) *Iterator {
+func BorrowIterator(data []byte, jsonNumber bool) *Iterator {
 	iter := iteratorPool.Get().(*Iterator)
+	iter.useJSONNumber = jsonNumber
 	iter.ResetBytes(data)
 	return iter
 }
@@ -25,5 +26,6 @@ func BorrowIterator(data []byte) *Iterator {
 func ReturnIterator(iter *Iterator) {
 	iter.Error = nil
 	iter.Attachment = nil
+	iter.useJSONNumber = false
 	iteratorPool.Put(iter)
 }

@@ -235,3 +235,40 @@ func TestMapInterface(t *testing.T) {
 	require.Equal(t, ds.kv["arr_arr"], []interface{}{[]interface{}{"str1", "str2"}}, "test arr_arr interface{}.")
 
 }
+
+func TestJSONNumber(t *testing.T) {
+	testStrJSONBytes := `{"int":10000, "arr":[1]}`
+	ds := &DStruct{}
+	var i interface{}
+	ds.SetFields(map[string]reflect.Type{
+		"int": reflect.TypeOf(i),
+		"arr": reflect.TypeOf(i),
+	})
+	ds.JSONNumber()
+	err := json.Unmarshal([]byte(testStrJSONBytes), ds)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	require.Equal(t, ds.kv["int"], (json.Number)("10000"), "test json number interface{}.")
+	require.Equal(t, ds.kv["arr"], []interface{}{(json.Number)("1")}, "test json number  arr interface{}.")
+
+	var intVal interface{}
+	ok, err := ds.Value("int", &intVal)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	if !ok {
+		t.Errorf("not found test int field")
+		return
+	}
+
+	intJSONNumberVal, ok := intVal.(json.Number)
+	if !ok {
+		t.Errorf("test int field. not json.Unmber")
+		return
+	}
+	require.Equal(t, intJSONNumberVal, (json.Number)("10000"), "test json number interface{}.")
+
+}
