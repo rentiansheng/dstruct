@@ -52,8 +52,8 @@ eg:
 		t.Error(err.Error())
 		return
 	}
-    intVal, err := ds.Int64("int")
-    if err != nil {
+        intVal, err := ds.Int64("int")
+        if err != nil {
 		fmt.Error(err.Error())
 		return
 	}
