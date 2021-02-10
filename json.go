@@ -21,6 +21,10 @@ func (d *DStruct) JSONNumber() {
 	d.jsonNumber = true
 }
 
+func (d DStruct) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.kv)
+}
+
 func (d *DStruct) jsonDecode(iter *jsoniter.Iterator) {
 
 	d.init()

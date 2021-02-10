@@ -32,7 +32,7 @@ func (k *kv) UnmarshalJSON(data []byte) error {
 // 综合测试
 func TestUnmarshalJSON(t *testing.T) {
 
-	testStrJSONBytes := `{"int":1,"str":"str","bl":true, "arr_str":["1","2"],"arr_int":[1,2], "map":{"a":1,"b":64}, ` +
+	testStrJSON := `{"int":1,"str":"str","bl":true, "arr_str":["1","2"],"arr_int":[1,2], "map":{"a":1,"b":64}, ` +
 		`"test_struct":{"str":"string", "int":1},"interface":{"str":"string", "bl":true}}`
 	ds := &DStruct{}
 	var i interface{}
@@ -46,7 +46,7 @@ func TestUnmarshalJSON(t *testing.T) {
 		"test_struct": reflect.TypeOf(testStruct{}),
 		"interface":   reflect.TypeOf(i),
 	})
-	err := json.Unmarshal([]byte(testStrJSONBytes), ds)
+	err := json.Unmarshal([]byte(testStrJSON), ds)
 	if err != nil {
 		t.Error("unmarshal: " + err.Error())
 		return
@@ -165,7 +165,7 @@ func TestPtrUnmarshalJSON(t *testing.T) {
 
 func TestNone(t *testing.T) {
 
-	testStrJSONBytes := `{}`
+	testStrJSON := `{}`
 	ds := &DStruct{}
 	var i interface{}
 	ds.SetFields(map[string]reflect.Type{
@@ -177,7 +177,7 @@ func TestNone(t *testing.T) {
 		"test_struct":   reflect.TypeOf(testStruct{}),
 		"interface":     reflect.TypeOf(i),
 	})
-	err := json.Unmarshal([]byte(testStrJSONBytes), ds)
+	err := json.Unmarshal([]byte(testStrJSON), ds)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -213,7 +213,7 @@ func TestInterface(t *testing.T) {
 
 func TestMapInterface(t *testing.T) {
 
-	testStrJSONBytes := `{"map":{"str":"str","bl":true}, "arr":["1", "2"],` +
+	testStrJSON := `{"map":{"str":"str","bl":true}, "arr":["1", "2"],` +
 		` "arr_map":[{"str":"str"}],"arr_arr":[["str1","str2"]]}`
 	ds := &DStruct{}
 	var i interface{}
@@ -223,7 +223,7 @@ func TestMapInterface(t *testing.T) {
 		"arr_map": reflect.TypeOf(i),
 		"arr_arr": reflect.TypeOf(i),
 	})
-	err := json.Unmarshal([]byte(testStrJSONBytes), ds)
+	err := json.Unmarshal([]byte(testStrJSON), ds)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -237,7 +237,7 @@ func TestMapInterface(t *testing.T) {
 }
 
 func TestJSONNumber(t *testing.T) {
-	testStrJSONBytes := `{"int":10000, "arr":[1]}`
+	testStrJSON := `{"int":10000, "arr":[1]}`
 	ds := &DStruct{}
 	var i interface{}
 	ds.SetFields(map[string]reflect.Type{
@@ -245,7 +245,7 @@ func TestJSONNumber(t *testing.T) {
 		"arr": reflect.TypeOf(i),
 	})
 	ds.JSONNumber()
-	err := json.Unmarshal([]byte(testStrJSONBytes), ds)
+	err := json.Unmarshal([]byte(testStrJSON), ds)
 	if err != nil {
 		t.Errorf(err.Error())
 		return
@@ -305,5 +305,32 @@ func TestAliasType(t *testing.T) {
 	}
 
 	require.Equal(t, intVal, (MyInt)(10000), "test json number interface{}.")
+
+}
+
+func TestJSONMarshal(t *testing.T) {
+	type MyInt int64
+	type MyStr string
+	testStrJSON := `{"str":"str"}`
+	ds := &DStruct{}
+	ds.SetFields(map[string]reflect.Type{
+		"str": reflect.TypeOf(string("")),
+	})
+	err := json.Unmarshal([]byte(testStrJSON), ds)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	require.Equal(t, ds.kv["str"], "str", "test alias string .")
+
+	marshalBytes, err := json.Marshal(ds)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	if string(marshalBytes) != testStrJSON {
+		t.Errorf("not equal")
+		return
+	}
 
 }
