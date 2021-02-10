@@ -161,76 +161,75 @@ func (jd *jsonDecode) String(val reflect.Value, iter *jsoniter.Iterator) {
 
 func (jd *jsonDecode) Int64(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadInt64()
-	val.Set(reflect.ValueOf(v))
-
+	val.SetInt(v)
 }
 
 func (jd *jsonDecode) Int32(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadInt32()
-	val.Set(reflect.ValueOf(v))
+	val.SetInt(int64(v))
 
 }
 
 func (jd *jsonDecode) Int16(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadInt16()
-	val.Set(reflect.ValueOf(v))
+	val.SetInt(int64(v))
 
 }
 
 func (jd *jsonDecode) Int8(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadInt8()
-	val.Set(reflect.ValueOf(v))
+	val.SetInt(int64(v))
 
 }
 
 func (jd *jsonDecode) Int(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadInt()
-	val.Set(reflect.ValueOf(v))
+	val.SetInt(int64(v))
 
 }
 
 func (jd *jsonDecode) Uint64(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadUint64()
-	val.Set(reflect.ValueOf(v))
+	val.SetInt(int64(v))
 
 }
 
 func (jd *jsonDecode) Uint32(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadUint32()
-	val.Set(reflect.ValueOf(v))
+	val.SetInt(int64(v))
 
 }
 
 func (jd *jsonDecode) Uint16(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadUint16()
-	val.Set(reflect.ValueOf(v))
+	val.SetInt(int64(v))
 
 }
 
 func (jd *jsonDecode) Uint8(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadUint8()
-	val.Set(reflect.ValueOf(v))
+	val.SetInt(int64(v))
 
 }
 
 func (jd *jsonDecode) Uint(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadUint()
-	val.Set(reflect.ValueOf(v))
+	val.SetInt(int64(v))
 }
 
 func (jd *jsonDecode) Bool(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadBool()
-	val.Set(reflect.ValueOf(v))
+	val.SetBool(v)
 }
 
 func (jd *jsonDecode) Float32(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadFloat32()
-	val.Set(reflect.ValueOf(v))
+	val.SetFloat(float64(v))
 }
 
 func (jd *jsonDecode) Float64(val reflect.Value, iter *jsoniter.Iterator) {
 	v := iter.ReadFloat64()
-	val.Set(reflect.ValueOf(v))
+	val.SetFloat(float64(v))
 }
 
 func (jd *jsonDecode) Array(val reflect.Value, iter *jsoniter.Iterator) {
@@ -450,7 +449,8 @@ func (jd *jsonDecode) Interface(val interface{}, iter *jsoniter.Iterator) {
 // TODO: optimziation. not use **ptr
 func (jd *jsonDecode) Unmarshal(val reflect.Value, iter *jsoniter.Iterator) {
 
-	elemVal := reflect.New(val.Type().Elem())
+	elemVal := reflect.New(val.Type()).Elem()
+	elemVal.Set(reflect.New(val.Type().Elem()))
 
 	unmarshaler := elemVal.Interface().(json.Unmarshaler)
 	iter.NextToken()

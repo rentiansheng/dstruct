@@ -24,10 +24,10 @@ eg:
     
 	testStrJSONBytes := `{"int":1,"str":"str","bl":true, "arr_str":["1","2"],"arr_int":[1,2], "map":{"a":1,"b":64}, ` +
 		`"test_struct":{"str":"string", "int":1},"interface":{"str":"string", "bl":true}}`
-        // define a dynamic structure 
+		// define a dynamic structure
 	ds := &DStruct{}
 	var i interface{}
-        // define the fields of the dynamic structure
+	// define the fields of the dynamic structure
 	ds.SetFields(map[string]reflect.Type{
 		"int":         TypeInt,
 		"str":         TypeString,
@@ -35,18 +35,23 @@ eg:
 		"arr_str":     TypeArrayStr,
 		"arr_int":     TypeArrayInt,
 		"map":         reflect.TypeOf(map[string]int64{}),
-		"test_struct": reflect.TypeOf(testStruct{}),
+		"test_struct": reflect.TypeOf(test_struct{}),
 		"interface":   reflect.TypeOf(i),
 	})
-        // Unmarshal dynamic structure, you can directly use golang official
+	// Unmarshal dynamic structure, you can directly use golang official
 	err := json.Unmarshal([]byte(testStrJSONBytes), ds)
 	if err != nil {
-        t.Error(err.Error())
+		t.Error(err.Error())
 		return
 	}
-    ds.Int64("int")
-    ds.String("str")
-    ds.Value("interface", &i)
+	ds.Int64("int")
+	ds.Str("str")
+	exists, err := ds.Value("interface", &i)
+	if err != nil {
+		fmt.Error(err.Error())
+		return
+	}
+	fmt.Println("exist field: ", exists, "val: ", i)
 
 ```
 

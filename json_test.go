@@ -272,3 +272,38 @@ func TestJSONNumber(t *testing.T) {
 	require.Equal(t, intJSONNumberVal, (json.Number)("10000"), "test json number interface{}.")
 
 }
+
+func TestAliasType(t *testing.T) {
+	type MyInt int64
+	type MyStr string
+	testStrJSONBytes := `{"int":10000, "arr":[1], "str":"str"}`
+	ds := &DStruct{}
+	ds.SetFields(map[string]reflect.Type{
+		"int": reflect.TypeOf(MyInt(1)),
+		"arr": reflect.TypeOf([]MyInt{}),
+		"str": reflect.TypeOf(string("")),
+	})
+	ds.JSONNumber()
+	err := json.Unmarshal([]byte(testStrJSONBytes), ds)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	require.Equal(t, ds.kv["int"], (MyInt)(10000), "test alias int .")
+	require.Equal(t, ds.kv["arr"], []MyInt{1}, "test alias int array  arr.")
+	require.Equal(t, ds.kv["str"], "str", "test alias string .")
+
+	var intVal MyInt
+	ok, err := ds.Value("int", &intVal)
+	if err != nil {
+		t.Errorf(err.Error())
+		return
+	}
+	if !ok {
+		t.Errorf("not found test int field")
+		return
+	}
+
+	require.Equal(t, intVal, (MyInt)(10000), "test json number interface{}.")
+
+}
