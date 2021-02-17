@@ -64,7 +64,7 @@ type DStruct struct {
 }
 
 func (d *DStruct) init() {
-	d.kv = make(map[string]interface{}, 0)
+	d.kv = make(map[string]interface{}, len(d.fields))
 	for field, typ := range d.fields {
 		if typ == nil {
 			d.kv[field] = nil
