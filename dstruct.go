@@ -181,6 +181,19 @@ func (d DStruct) checkType(name string, typ reflect.Type) error {
 	return nil
 }
 
+// 克隆一个新的结构体，不包含值
+func (d *DStruct) Clone() *DStruct {
+	newD := &DStruct{}
+	newD.mode = d.mode
+	newD.fields = d.fields
+	newD.jsonNumber = d.jsonNumber
+	newD.kv = nil
+	for field, typ := range d.fields {
+		newD.fields[field] = typ
+	}
+	return newD
+}
+
 func (d DStruct) String() string {
 
 	str, err := json.Marshal(d.kv)

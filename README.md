@@ -74,3 +74,25 @@ eg:
 
 
 
+#### bson Unmarshal
+
+eg:
+```golang
+
+	ds := &DStruct{}
+	ds.SetFields(map[string]reflect.Type{
+		"int":         TypeInt,
+		"str":         TypeString,
+		"bl":          TypeBool,
+		"arr_str":     TypeArrayStr,
+		"arr_int":     TypeArrayInt,
+		"map":         reflect.TypeOf(map[string]int64{}),
+		"test_struct": reflect.TypeOf(testStruct{}),
+	})
+	err = bson.Unmarshal(bsonBytes, ds)
+	if err != nil {
+		t.Error("unmarshal: " + err.Error())
+		return
+	}
+
+```
