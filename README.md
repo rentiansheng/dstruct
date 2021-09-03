@@ -25,7 +25,7 @@ struct 在我们使用的时候之所以方便，简洁就是在做反序列的�
 
 #### json Unmarshal
 
-使用  github.com/json-iterator/go 来 Iterator实现数据读取和接卸，后需计划使用unsafe.Pointer ， 减少reflect性能损耗
+使用  github.com/json-iterator/go 来 Iterator实现数据读取和数据反序列化，后需计划使用unsafe.Pointer ， 减少reflect性能损耗
 
 eg:
 ```golang
