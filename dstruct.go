@@ -21,6 +21,8 @@ const (
 	broadMode
 )
 
+
+
 var (
 	TypeString  = reflect.TypeOf("")
 	TypeInvalid = reflect.TypeOf(nil)
@@ -181,7 +183,7 @@ func (d DStruct) checkType(name string, typ reflect.Type) error {
 	return nil
 }
 
-// 克隆一个新的结构体，不包含值
+// Clone 克隆一个新的结构体，不包含值
 func (d *DStruct) Clone() *DStruct {
 	newD := &DStruct{}
 	newD.mode = d.mode
@@ -202,3 +204,4 @@ func (d DStruct) String() string {
 	}
 	return string(str)
 }
+

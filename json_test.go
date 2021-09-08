@@ -2,7 +2,9 @@ package dstruct
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -333,4 +335,39 @@ func TestJSONMarshal(t *testing.T) {
 		return
 	}
 
+}
+
+func TestJSONValidation(t *testing.T) {
+	ds := &DStruct{}
+	testValidateJSON := `{"val":1}`
+	rawValidate := intValidation(1)
+	ds.SetFields(map[string]reflect.Type{
+		"val": reflect.TypeOf(rawValidate),
+	})
+
+	err := json.Unmarshal([]byte(testValidateJSON), ds)
+	require.NoError(t, err)
+	require.Equal(t, ds.kv["val"], rawValidate, "test validation error.")
+
+	testValidateJSON = `{"val":100}`
+	ds.SetFields(map[string]reflect.Type{
+		"val": reflect.TypeOf(rawValidate),
+	})
+	err = json.Unmarshal([]byte(testValidateJSON), ds)
+	require.Error(t, err)
+	if !strings.Contains(err.Error(), validInt64Err.Error()) {
+		t.Errorf(err.Error())
+		return
+	}
+}
+
+type intValidation int64
+
+var validInt64Err = errors.New("validation error. must be 1 to 10")
+
+func (iv intValidation) Validate() error {
+	if iv >= 1 && iv <= 10 {
+		return nil
+	}
+	return validInt64Err
 }

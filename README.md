@@ -9,9 +9,13 @@
 
 ####  目前开发进度
 
-json Unmarshal 主要功能开发完成，指针类型暂不支持
+#### 1. 核型功能
 
-bson Unmarshal 暂未启动
+- json Unmarshal 主要功能开发完成，指针类型暂不支持
+- bson Unmarshal 测试阶段
+
+#### 2. 扩张功能
+
 
 
 

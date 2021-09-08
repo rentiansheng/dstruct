@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"dstruct/jsoniter"
+	"github.com/rentiansheng/dstruct/jsoniter"
 )
 
 func (d *DStruct) UnmarshalJSON(data []byte) error {
@@ -73,6 +73,11 @@ func (d *DStruct) jsonDecode(iter *jsoniter.Iterator) {
 				d.kv[key] = val.Interface()
 			}
 
+			if iter.Error != nil {
+				return
+			}
+
+
 		} else {
 			iter.Skip()
 		}
@@ -99,7 +104,36 @@ var (
 	defaultDecode = &jsonDecode{}
 )
 
+
+
+
 func (jd *jsonDecode) Decode(typ reflect.Type) decoder {
+
+	d := jd.decode(typ )
+	if d == nil {
+		return nil
+	}
+
+	return jd.wrapDecode(d)
+}
+
+func (jd *jsonDecode) wrapDecode(d decoder) decoder {
+	return func  (val reflect.Value, iter *jsoniter.Iterator) {
+			d(val, iter )
+			if iter.Error != nil {
+				return
+			}
+			v, ok := val.Interface().(validation)
+			if ok {
+				if err := v.Validate() ; err != nil {
+					iter.ReportError("validation", err.Error())
+				}
+			}
+	}
+}
+
+func (jd *jsonDecode) decode(typ reflect.Type) decoder {
+
 
 	// custom json.Unmarshal
 	if typ.Implements(ummarshalerType) {
@@ -450,7 +484,7 @@ func (jd *jsonDecode) Interface(val interface{}, iter *jsoniter.Iterator) {
 	valOf.Set(reflect.ValueOf(jsonVal))
 }
 
-// TODO: optimziation. not use **ptr
+// Unmarshal json TODO: optimization. not use **ptr
 func (jd *jsonDecode) Unmarshal(val reflect.Value, iter *jsoniter.Iterator) {
 
 	elemVal := reflect.New(val.Type()).Elem()
@@ -472,7 +506,7 @@ func (jd *jsonDecode) Unmarshal(val reflect.Value, iter *jsoniter.Iterator) {
 	val.Set(elemVal)
 }
 
-// only map key
+// DecodeMapKey only map key
 func (jd *jsonDecode) DecodeMapKey(typ reflect.Type) decoder {
 
 	decode := jd.Decode(typ)
