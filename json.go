@@ -71,6 +71,10 @@ func (d *DStruct) jsonDecode(iter *jsoniter.Iterator) {
 				val := reflect.New(typ).Elem()
 				decode(val, iter)
 				d.kv[key] = val.Interface()
+				if err := validateStruct(val); err != nil {
+					iter.ReportError("validator", "field("+key+") type("+typ.Name()+") "+err.Error())
+					return
+				}
 			}
 
 		} else {

@@ -3,6 +3,7 @@ package dstruct
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -333,4 +334,83 @@ func TestJSONMarshal(t *testing.T) {
 		return
 	}
 
+}
+
+/****** 测试validator用例 ******/
+
+type testValidateStruct struct {
+	Str string `json:"str" validate:"required,min=3,max=10"`
+	Int int    `json:"int" validate:"required,gte=3,lte=10"`
+}
+
+func TestValidatorUnmarshalJSON(t *testing.T) {
+	suits := []struct {
+		input  string
+		hasErr bool
+	}{
+		{
+			input: `{"int":4,"str":"str","test_struct":{"str":"123", "int":4}}`,
+		},
+		{
+			input: `{"int":4,"str":"str","test_struct":{"str":"1234567890", "int":10}}`,
+		},
+		{
+			input: `{"int":4,"str":"str","test_struct":{"str":"12345", "int":5}}`,
+		},
+		// str validator
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"", "int":4}}`,
+			hasErr: true,
+		},
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"123456789012121", "int":4}}`,
+			hasErr: true,
+		},
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"12", "int":4}}`,
+			hasErr: true,
+		},
+
+		// int validator
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"123", "int":1}}`,
+			hasErr: true,
+		},
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"123", "int":11}}`,
+			hasErr: true,
+		},
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"123", "int":-1}}`,
+			hasErr: true,
+		},
+	}
+
+	ds := &DStruct{}
+	var i interface{}
+	ds.SetFields(map[string]reflect.Type{
+		"int":         TypeInt,
+		"str":         TypeString,
+		"bl":          TypeBool,
+		"arr_str":     TypeArrayStr,
+		"arr_int":     TypeArrayInt,
+		"map":         reflect.TypeOf(map[string]int64{}),
+		"test_struct": reflect.TypeOf(testValidateStruct{}),
+		"interface":   reflect.TypeOf(i),
+	})
+	for idx, suit := range suits {
+		err := json.Unmarshal([]byte(suit.input), ds)
+		if suit.hasErr {
+			if err == nil {
+				t.Errorf("unmarshal index %d validator not work ", idx)
+			} else if !strings.HasPrefix(err.Error(), "validator: field(test_struct) type(testValidateStruct) Key:") {
+				t.Errorf("unmarshal index %d error %s ", idx, err.Error())
+			}
+		} else {
+			if err != nil {
+				t.Errorf("unmarshal index %d error %s ", idx, err.Error())
+			}
+		}
+
+	}
 }

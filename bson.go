@@ -1,6 +1,7 @@
 package dstruct
 
 import (
+	"fmt"
 	"reflect"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -39,7 +40,9 @@ func (d *DStruct) UnmarshalBSON(data []byte) error {
 			continue
 		}
 		d.kv[field] = val.Elem().Interface()
-
+		if err := validateStruct(val); err != nil {
+			return fmt.Errorf("validator: ield(" + field + ") type(" + val.Type().Name() + ") " + err.Error())
+		}
 	}
 
 	return nil
