@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"dstruct/jsoniter"
+	"github.com/rentiansheng/dstruct/jsoniter"
 )
 
 func (d *DStruct) UnmarshalJSON(data []byte) error {
