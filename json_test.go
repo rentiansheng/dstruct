@@ -339,8 +339,8 @@ func TestJSONMarshal(t *testing.T) {
 /****** 测试validator用例 ******/
 
 type testValidateStruct struct {
-	Str string `json:"str" validate:"required,min=3,max=10"`
-	Int int    `json:"int" validate:"required,gte=3,lte=10"`
+	Str string `json:"str"  bson:"str" validate:"required,min=3,max=10"`
+	Int int    `json:"int" bson:"int" validate:"required,gte=3,lte=10"`
 }
 
 func TestValidatorUnmarshalJSON(t *testing.T) {
@@ -387,6 +387,7 @@ func TestValidatorUnmarshalJSON(t *testing.T) {
 	}
 
 	ds := &DStruct{}
+	ds.ValidateOn()
 	var i interface{}
 	ds.SetFields(map[string]reflect.Type{
 		"int":         TypeInt,

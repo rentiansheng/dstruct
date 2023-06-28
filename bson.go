@@ -40,8 +40,10 @@ func (d *DStruct) UnmarshalBSON(data []byte) error {
 			continue
 		}
 		d.kv[field] = val.Elem().Interface()
-		if err := validateStruct(val); err != nil {
-			return fmt.Errorf("validator: ield(" + field + ") type(" + val.Type().Name() + ") " + err.Error())
+		if d.validate != nil {
+			if err := d.validate(val.Elem()); err != nil {
+				return fmt.Errorf("validator: field(" + field + ") type(" + rawTye.Name() + ") " + err.Error())
+			}
 		}
 	}
 

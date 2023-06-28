@@ -13,6 +13,8 @@ import (
 
 ***************************/
 
+type validatorType func(value reflect.Value) error
+
 var validate = validator.New()
 
 // validateStruct 不会递归调用
@@ -21,19 +23,32 @@ func validateStruct(value reflect.Value) error {
 		return nil
 	}
 
-	switch value.Kind() {
-	case reflect.Ptr:
-		return validate.Struct(value.Elem().Interface())
-	case reflect.Struct:
-		return validate.Struct(value.Interface())
-	/*case reflect.Slice, reflect.Array:
-
-	for i := 0; i < value.Len(); i++ {
-		if err := validateStruct(value.Index(i)); err != nil {
+	data := value.Interface()
+	if data == nil {
+		return nil
+	}
+	if v, ok := data.(Validate); ok {
+		if err := v.Validate(); err != nil {
 			return err
 		}
 	}
-	return nil*/
+	switch value.Kind() {
+	case reflect.Ptr:
+		data := value.Elem().Interface()
+		if data == nil {
+			return nil
+		}
+		return validate.Struct(data)
+	case reflect.Struct:
+		return validate.Struct(data)
+	case reflect.Slice, reflect.Array:
+
+		for i := 0; i < value.Len(); i++ {
+			if err := validateStruct(value.Index(i)); err != nil {
+				return err
+			}
+		}
+		return nil
 	default:
 		return nil
 	}

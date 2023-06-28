@@ -8,12 +8,20 @@ import (
 	"github.com/rentiansheng/dstruct/jsoniter"
 )
 
+type Validate interface {
+	Validate() error
+}
+
 func (d *DStruct) UnmarshalJSON(data []byte) error {
 
 	iter := jsoniter.BorrowIterator(data, d.jsonNumber)
 	defer jsoniter.ReturnIterator(iter)
 	d.jsonDecode(iter)
-	return iter.Error
+	if iter.Error != nil {
+		return iter.Error
+	}
+
+	return nil
 
 }
 
@@ -21,8 +29,20 @@ func (d *DStruct) JSONNumber() {
 	d.jsonNumber = true
 }
 
+func (d *DStruct) JSONNumberOff() {
+	d.jsonNumber = false
+}
+
 func (d DStruct) MarshalJSON() ([]byte, error) {
 	return json.Marshal(d.kv)
+}
+
+func (d *DStruct) ValidateOn() {
+	d.validate = validateStruct
+}
+
+func (d *DStruct) ValidateOff() {
+	d.validate = nil
 }
 
 func (d *DStruct) jsonDecode(iter *jsoniter.Iterator) {
@@ -71,10 +91,14 @@ func (d *DStruct) jsonDecode(iter *jsoniter.Iterator) {
 				val := reflect.New(typ).Elem()
 				decode(val, iter)
 				d.kv[key] = val.Interface()
-				if err := validateStruct(val); err != nil {
-					iter.ReportError("validator", "field("+key+") type("+typ.Name()+") "+err.Error())
-					return
+
+				if d.validate != nil {
+					if err := d.validate(val); err != nil {
+						iter.ReportError("validator", "field("+key+") type("+typ.Name()+") "+err.Error())
+					}
+
 				}
+
 			}
 
 		} else {

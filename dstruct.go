@@ -9,7 +9,7 @@ import (
 var (
 	ErrType     error = errors.New("type mismatch")
 	ErrNotFound error = errors.New("not found field")
-	ErrNotSet         = errors.New("eflect.Value.Addr of unaddressable value")
+	ErrNotSet         = errors.New("reflect.Value.Addr of unaddressable value")
 )
 
 type DMode int64
@@ -61,6 +61,7 @@ type DStruct struct {
 
 	// json Unmarshal 特有字段，数组类型是否使用jsonNumber
 	jsonNumber bool
+	validate   validatorType
 }
 
 func (d *DStruct) init() {
@@ -187,6 +188,7 @@ func (d *DStruct) Clone() *DStruct {
 	newD.mode = d.mode
 	newD.fields = d.fields
 	newD.jsonNumber = d.jsonNumber
+	newD.validate = d.validate
 	newD.kv = nil
 	for field, typ := range d.fields {
 		newD.fields[field] = typ

@@ -1,7 +1,9 @@
 package dstruct
 
 import (
+	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -105,4 +107,89 @@ func TestMarshalBSON(t *testing.T) {
 	require.Equal(t, newDS.kv["arr_int"], []int{1, 2}, "test []int.")
 	require.Equal(t, newDS.kv["map"], map[string]int64{"int1": 1}, "test map[string]int64.")
 	require.Equal(t, newDS.kv["test_struct"], testStruct{Str: "string", Int: 1}, "test struct.")
+}
+
+func TestValidatorUnmarshalBSON(t *testing.T) {
+	suits := []struct {
+		input  string
+		hasErr bool
+	}{
+		{
+			input: `{"int":4,"str":"str","test_struct":{"str":"123", "int":4}}`,
+		},
+		{
+			input: `{"int":4,"str":"str","test_struct":{"str":"1234567890", "int":10}}`,
+		},
+		{
+			input: `{"int":4,"str":"str","test_struct":{"str":"12345", "int":5}}`,
+		},
+		// str validator
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"", "int":4}}`,
+			hasErr: true,
+		},
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"123456789012121", "int":4}}`,
+			hasErr: true,
+		},
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"12", "int":4}}`,
+			hasErr: true,
+		},
+
+		// int validator
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"123", "int":1}}`,
+			hasErr: true,
+		},
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"123", "int":11}}`,
+			hasErr: true,
+		},
+		{
+			input:  `{"int":4,"str":"str","test_struct":{"str":"123", "int":-1}}`,
+			hasErr: true,
+		},
+	}
+
+	ds := &DStruct{}
+	ds.ValidateOn()
+	var i interface{}
+	ds.SetFields(map[string]reflect.Type{
+		"int":         TypeInt,
+		"str":         TypeString,
+		"bl":          TypeBool,
+		"arr_str":     TypeArrayStr,
+		"arr_int":     TypeArrayInt,
+		"map":         reflect.TypeOf(map[string]int64{}),
+		"test_struct": reflect.TypeOf(testValidateStruct{}),
+		"interface":   reflect.TypeOf(i),
+	})
+	for idx, suit := range suits {
+		tmpMap := make(map[string]interface{}, 0)
+		err := json.Unmarshal([]byte(suit.input), &tmpMap)
+		if err != nil {
+			t.Errorf("unmarshal index %d error %s ", idx, err.Error())
+			continue
+		}
+		testBsonBytes, err := bson.Marshal(tmpMap)
+		if err != nil {
+			t.Errorf("unmarshal index %d error %s ", idx, err.Error())
+			continue
+		}
+
+		err = bson.Unmarshal(testBsonBytes, ds)
+		if suit.hasErr {
+			if err == nil {
+				t.Errorf("unmarshal index %d validator not work ", idx)
+			} else if !strings.HasPrefix(err.Error(), "validator: field(test_struct) type(testValidateStruct) Key:") {
+				t.Errorf("unmarshal index %d error %s ", idx, err.Error())
+			}
+		} else {
+			if err != nil {
+				t.Errorf("unmarshal index %d error %s ", idx, err.Error())
+			}
+		}
+
+	}
 }
